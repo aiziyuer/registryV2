@@ -2,3 +2,4 @@ test/.env
 *.exe
 registryV2
 .idea
+__*_bin
