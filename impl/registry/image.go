@@ -212,10 +212,10 @@ const ManifestV2RequestTemplate = `
         "Authorization": "",
         "User-Agent": "docker/1.13.1 go/go1.10.3 kernel/3.10.0-1062.4.1.el7.x86_64 os/linux arch/amd64 UpstreamClient(Docker-Client/1.13.1 \\(linux\\))",
         "Accept": [
+            "application/json",
             "application/vnd.docker.distribution.manifest.v2+json",
             "application/vnd.docker.distribution.manifest.list.v2+json",
-            "application/vnd.docker.distribution.manifest.v1+prettyjws",
-            "application/json"
+            "application/vnd.docker.distribution.manifest.v1+prettyjws"
         ]
     }
 }
@@ -230,7 +230,6 @@ const BlobRequestTemplate = `
     "Headers": {
         "Accept-Encoding": "identity",
         "Content-Type": "application/json; charset=utf-8",
-        "Authorization": "",
         "User-Agent": "docker/1.13.1 go/go1.10.3 kernel/3.10.0-1062.4.1.el7.x86_64 os/linux arch/amd64 UpstreamClient(Docker-Client/1.13.1 \\(linux\\))"
     }
 }
@@ -239,16 +238,21 @@ const BlobRequestTemplate = `
 func (r *Registry) ManifestV2(imageFullName string) (*ManifestsV2, error) {
 
 	manifestV2 := &ManifestsV2{
-		Size: 0,
+		SchemaVersion: 0,
 		Manifests: []SubManifestsV2{
 			{
-				Config: nil,
-				Size:   0,
+				Digest:        "",
+				MediaType:     "",
+				Config:        nil,
+				Layers:        nil,
+				Platform:      nil,
+				Size:          -1,
+				SchemaVersion: 0,
 			},
 		},
 	}
 
-	m := util.RegexNamedMatch(imageFullName, `(?:(?P<Host>^[^.]+\.[^/]+)/)?(?P<RepoName>[a-z0-9]+(?:[._\-/][a-z0-9]+)*):(?P<TagName>[a-z0-9]+(?:[._\-/][a-z0-9]+)*)`)
+	m := util.RegexNamedMatch(imageFullName, `(?:(?P<Host>[^.]+\.[^/]+)/)?(?P<RepoName>[a-z0-9]+(?:[._\-/][a-z0-9]+)*):(?P<TagName>[a-z0-9]+(?:[._\-/][a-z0-9]+)*)`)
 	if len(m) == 0 {
 		return manifestV2, errors.New(fmt.Sprintf("image name(%s) invalid", imageFullName))
 	}
@@ -376,7 +380,7 @@ func (r *Registry) ManifestV2(imageFullName string) (*ManifestsV2, error) {
 
 		if strings.Contains(tmpBody, "manifests") {
 
-			if err := util.JsonX2Object(tmpBody, &manifestV2); err != nil {
+			if err := util.JsonX2Object(tmpBody, manifestV2); err != nil {
 				logrus.Error(err)
 				return
 			}

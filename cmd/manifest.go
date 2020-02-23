@@ -23,13 +23,15 @@ func init() {
 				return errors.New("image name require, eg: ubuntu:latest ")
 			}
 
-			// support for private registry
-			registryHost := "registry-1.docker.io"
-			m := util.RegexNamedMatch(args[0], `(?:(?P<Host>^[^.]+\.[^/]+)/)?(?P<RepoName>[a-z0-9]+(?:[._\-/][a-z0-9]+)*):(?P<TagName>[a-z0-9]+(?:[._\-/][a-z0-9]+)*)`)
-			if len(m) != 0 {
-				registryHost = m["Host"]
-			}
-			c, err := getClient(util.GetEnvAnyWithDefault(registryHost))
+			registryHost := util.GetEnvAnyWithDefault("registry-1.docker.io", "REGISTRY_V2_HOST")
+			func() {
+				// support for private registry
+				m := util.RegexNamedMatch(args[0], `(?:(?P<Host>[^.]+\.[^/]+)/)?(?P<RepoName>[a-z0-9]+(?:[._\-/][a-z0-9]+)*):(?P<TagName>[a-z0-9]+(?:[._\-/][a-z0-9]+)*)`)
+				if len(m) != 0 && m["Host"] != "" {
+					registryHost = m["Host"]
+				}
+			}()
+			c, err := getClient(registryHost)
 			if err != nil {
 				return err
 			}

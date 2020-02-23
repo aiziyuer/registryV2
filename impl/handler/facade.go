@@ -61,7 +61,7 @@ func (r *ApiRequest) Render() (*ApiRequest, error) {
 		return nil, err
 	}
 	if err := t.Execute(&output, r.Input); err != nil {
-		logrus.Debug("textTemplate render failed")
+		logrus.Error("textTemplate render failed")
 		logrus.Debugf("template: %s", r.Template)
 		logrus.Debugf("input: %s", r.Input)
 		return nil, err
