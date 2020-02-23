@@ -1,4 +1,4 @@
-name: Release
+name: Release Me
 on:
   create:
     tags:
