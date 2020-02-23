@@ -52,7 +52,7 @@ func init() {
 		"verbose",
 		"v",
 		logrus.WarnLevel.String(),
-		"Log level (trace, debug, info, warn, error, fatal, panic)",
+		"Log level (trace, debug, info, warn, error, fatal, panic) ",
 	)
 
 	rootCmd.PersistentFlags().StringVarP(
@@ -81,7 +81,7 @@ func getClient(host string) (*registry.Registry, error) {
 	jsonParsed, _ := gabs.ParseJSONFile(path.Join(registryV2ConfigDir, ".registryV2/config.json"))
 	encodedAuth := jsonParsed.
 		Search("auths").
-		Search(util.GetEnvAnyWithDefault("registry-1.docker.io", "REGISTRY_V2_HOST")).
+		Search(util.GetEnvAnyWithDefault(host, "REGISTRY_V2_HOST")).
 		Search("auth").
 		Data()
 

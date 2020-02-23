@@ -1,8 +1,6 @@
 package registry
 
 import (
-	"encoding/base64"
-	"fmt"
 	"github.com/aiziyuer/registryV2/impl/common"
 	"github.com/aiziyuer/registryV2/impl/handler"
 	"net/http"
@@ -90,15 +88,9 @@ func (r *Registry) Login() error {
 	return nil
 }
 
-type ResponseHandleFunc func(resp *http.Response) error
+type ResponseFunc func(resp *http.Response)
 
-func (r *Registry) Do(template string, input *handler.ApiRequestInput, fn ResponseHandleFunc) error {
-
-	if r.Auth != nil {
-		basicAuth := fmt.Sprintf("%s:%s", r.Auth.UserName, r.Auth.PassWord)
-		encoded := base64.StdEncoding.EncodeToString([]byte(basicAuth))
-		(*input)["Authorization"] = fmt.Sprintf("Basic %s", encoded)
-	}
+func (r *Registry) Do(template string, input *handler.ApiRequestInput, fn ResponseFunc) error {
 
 	q, err := handler.NewApiRequest(template, *input)
 	if err != nil {
@@ -106,16 +98,18 @@ func (r *Registry) Do(template string, input *handler.ApiRequestInput, fn Respon
 	}
 
 	req, _ := q.Wrapper()
-	resp, _ := r.HandlerFacade.Do(req)
+	resp, err := r.HandlerFacade.Do(req)
+	if err != nil {
+		return err
+	}
+
 	if resp != nil {
 		defer func() {
 			_ = resp.Body.Close()
 		}()
 	}
 
-	if err := fn(resp); err != nil {
-		return err
-	}
+	fn(resp)
 
 	return nil
 

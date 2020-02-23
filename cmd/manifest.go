@@ -13,12 +13,14 @@ import (
 func init() {
 
 	var imageManifestCmd = &cobra.Command{
-		Use:   "manifest",
-		Short: "manifest for image",
+		Use:          "manifest",
+		Short:        "manifest for image",
+		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			if len(args) < 1 {
-				return errors.New("input image name first ")
+				cmd.SilenceUsage = false
+				return errors.New("image name require, eg: ubuntu:latest ")
 			}
 
 			// support for private registry
@@ -32,26 +34,36 @@ func init() {
 				return err
 			}
 
-			// 业务逻辑
-			ret, err := c.ManifestV2(args[0])
+			manifestV2, err := c.ManifestV2(args[0])
 			if err != nil {
-				logrus.Errorf("can't get ret from image(%s)", args[0])
+				logrus.Errorf("can't get manifestV2 from image(%s)", args[0])
 				return err
 			}
+			switch outputFormat {
+			case "table":
+				tree := treeprint.New()
+				rootTree := tree.AddBranch(fmt.Sprintf("[D] %s %d", manifestV2.Digest, manifestV2.Size))
 
-			tree := treeprint.New()
-			rootTree := tree.AddBranch(fmt.Sprintf("[D] %s %d", ret.Digest, ret.Size))
-
-			for _, m := range ret.Manifests {
-				subTree := rootTree.AddBranch(fmt.Sprintf("[P %s/%s] %s %d", m.Platform.OS, m.Platform.Architecture, m.Digest, m.Size))
-				subTree.AddNode(fmt.Sprintf("[C] %s %d", m.Config.Digest, m.Config.Size))
-				//size := len(m.Layers)
-				for i, layer := range m.Layers {
-					subTree.AddNode(fmt.Sprintf("[L %3d] %s %d", i+1, layer.Digest, layer.Size))
+				for _, m := range manifestV2.Manifests {
+					subTree := rootTree.AddBranch(fmt.Sprintf("[P %s/%s] %s %d", m.Platform.OS, m.Platform.Architecture, m.Digest, m.Size))
+					subTree.AddNode(fmt.Sprintf("[C] %s %d", m.Config.Digest, m.Config.Size))
+					//size := len(m.Layers)
+					for i, layer := range m.Layers {
+						subTree.AddNode(fmt.Sprintf("[L %3d] %s %d", i+1, layer.Digest, layer.Size))
+					}
 				}
+
+				fmt.Println(tree.String())
+			case "json":
+				json, err := util.Object2PrettyJson(manifestV2)
+				if err != nil {
+					return err
+				}
+				fmt.Println(json)
+			case "yaml":
+				// TODO
 			}
 
-			fmt.Println(tree.String())
 			return nil
 		},
 	}

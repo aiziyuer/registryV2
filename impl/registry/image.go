@@ -41,12 +41,12 @@ type (
 		OS           string `json:"os"`
 	}
 
-	ManifestConfig struct {
-		Architecture string `json:"architecture"`
-		OS           string `json:"os"`
-		MediaType    string `json:"mediaType"`
-		Size         int    `json:"size"`
-		Digest       string `json:"digest"`
+	ManifestsConfig struct {
+		Architecture  string                   `json:"architecture"`
+		OS            string                   `json:"os"`
+		Config        map[string]interface{}   `json:"config"`
+		History       []map[string]interface{} `json:"history"`
+		DockerVersion string                   `json:"docker_version"`
 	}
 
 	MediaType struct {
@@ -57,17 +57,17 @@ type (
 
 	SubManifestsV2 struct {
 		Digest        string      `json:"digest"`
+		SchemaVersion int         `json:"schemaVersion"`
 		MediaType     string      `json:"mediaType"`
 		Config        *MediaType  `json:"config"`
 		Layers        []MediaType `json:"layers"`
 		Platform      *Platform   `json:"platform"`
 		Size          int         `json:"size"`
-		SchemaVersion int         `json:"schemaVersion"`
 		RawBase64     string      `json:"rawBase64"`
 		RawSha256Sum  string      `json:"rawSha256Sum"`
 	}
 
-	ManifestV2 struct {
+	ManifestsV2 struct {
 		Digest        string           `json:"digest"`
 		SchemaVersion int              `json:"schemaVersion"`
 		MediaType     string           `json:"mediaType"`
@@ -110,14 +110,13 @@ func (r *Registry) searchProject(requestInput *handler.ApiRequestInput) (*Projec
 	if err := r.Do( //
 		SearchProjectRequestTemplate, //
 		requestInput,                 //
-		func(resp *http.Response) error {
+		func(resp *http.Response) {
 
 			if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 				logrus.Error(err)
-				return err
+				return
 			}
 
-			return nil
 		}, //
 	); err != nil {
 		logrus.Error(err)
@@ -201,7 +200,7 @@ func (r *Registry) SearchProject(nameQuery string, n int) ([]Project, error) {
 	return projects, nil
 }
 
-const V2ManifestRequestTemplate = `
+const ManifestV2RequestTemplate = `
 {
     "Method": "GET",
     "Path": "/v2/{{ .RepoName}}/manifests/{{ .Index }}",
@@ -222,7 +221,7 @@ const V2ManifestRequestTemplate = `
 }
 `
 
-const V2BlobRequestTemplate = `
+const BlobRequestTemplate = `
 {
     "Method": "GET",
     "Path": "/v2/{{ .RepoName}}/blobs/{{ .Index }}",
@@ -237,9 +236,9 @@ const V2BlobRequestTemplate = `
 }
 `
 
-func (r *Registry) ManifestV2(imageFullName string) (*ManifestV2, error) {
+func (r *Registry) ManifestV2(imageFullName string) (*ManifestsV2, error) {
 
-	manifestV2 := &ManifestV2{
+	manifestV2 := &ManifestsV2{
 		Size: 0,
 		Manifests: []SubManifestsV2{
 			{
@@ -271,7 +270,7 @@ func (r *Registry) ManifestV2(imageFullName string) (*ManifestV2, error) {
 	// 消费协程
 	go func() {
 
-		for subManifestsV2 := range ch {
+		for subManifestV2 := range ch {
 
 			func() {
 
@@ -279,59 +278,61 @@ func (r *Registry) ManifestV2(imageFullName string) (*ManifestV2, error) {
 
 				var tmpBody string
 				if err := r.Do(
-					V2ManifestRequestTemplate,
+					ManifestV2RequestTemplate,
 					&handler.ApiRequestInput{
 						"Schema":   r.Endpoint.Schema,
 						"Host":     host,
 						"RepoName": repoName,
-						"Index":    subManifestsV2.Digest,
+						"Index":    subManifestV2.Digest,
 					}, //
-					func(resp *http.Response) error {
-
-						subManifestsV2.Digest = resp.Header.Get("Docker-Content-Digest")
-						subManifestsV2.RawBase64 = base64.RawStdEncoding.EncodeToString([]byte(tmpBody))
+					func(resp *http.Response) {
 
 						tmpBody = util.ReadWithDefault(resp.Body, "{}")
 						h := sha256.New()
 						h.Write([]byte(tmpBody))
-						subManifestsV2.RawSha256Sum = hex.EncodeToString(h.Sum(nil))
 
-						return nil
+						subManifestV2.RawBase64 = base64.RawStdEncoding.EncodeToString([]byte(tmpBody))
+						subManifestV2.Digest = resp.Header.Get("Docker-Content-Digest")
+						subManifestV2.RawSha256Sum = hex.EncodeToString(h.Sum(nil))
+
+						return
 					},
 				); err != nil {
 					logrus.Error(err)
 					return
 				}
 
-				if err := json.Unmarshal([]byte(tmpBody), subManifestsV2); err != nil {
+				if err := json.Unmarshal([]byte(tmpBody), subManifestV2); err != nil {
 					logrus.Error(err)
+					return
 				}
 
-				subManifestsV2.Size = subManifestsV2.Config.Size
-				for _, layer := range subManifestsV2.Layers {
-					subManifestsV2.Size += layer.Size
+				subManifestV2.Size = subManifestV2.Config.Size
+				for _, layer := range subManifestV2.Layers {
+					subManifestV2.Size += layer.Size
 				}
 
 				if err := r.Do(
-					V2BlobRequestTemplate,
+					BlobRequestTemplate,
 					&handler.ApiRequestInput{
 						"Schema":   r.Endpoint.Schema,
 						"Host":     host,
 						"RepoName": repoName,
-						"Index":    subManifestsV2.Config.Digest,
+						"Index":    subManifestV2.Config.Digest,
 					}, //
-					func(resp *http.Response) error {
+					func(resp *http.Response) {
 
-						config := ManifestConfig{}
+						config := ManifestsConfig{}
 						if err := json.NewDecoder(resp.Body).Decode(&config); err != nil {
-							return err
+							logrus.Error(err)
+							return
 						}
 
-						subManifestsV2.Platform = &Platform{
+						subManifestV2.Platform = &Platform{
 							Architecture: config.Architecture,
 							OS:           config.OS,
 						}
-						return nil
+						return
 					}, //
 				); err != nil {
 					logrus.Error(err)
@@ -349,14 +350,14 @@ func (r *Registry) ManifestV2(imageFullName string) (*ManifestV2, error) {
 
 		var tmpBody string
 		if err := r.Do(
-			V2ManifestRequestTemplate,
+			ManifestV2RequestTemplate,
 			&handler.ApiRequestInput{
 				"Schema":   r.Endpoint.Schema,
 				"Host":     host,
 				"RepoName": repoName,
 				"Index":    m["TagName"],
 			}, //
-			func(resp *http.Response) error {
+			func(resp *http.Response) {
 
 				manifestV2.Digest = resp.Header.Get("Docker-Content-Digest")
 				manifestV2.RawBase64 = base64.RawStdEncoding.EncodeToString([]byte(tmpBody))
@@ -366,7 +367,7 @@ func (r *Registry) ManifestV2(imageFullName string) (*ManifestV2, error) {
 				h.Write([]byte(tmpBody))
 				manifestV2.RawSha256Sum = hex.EncodeToString(h.Sum(nil))
 
-				return nil
+				return
 			},
 		); err != nil {
 			logrus.Error(err)
@@ -375,7 +376,7 @@ func (r *Registry) ManifestV2(imageFullName string) (*ManifestV2, error) {
 
 		if strings.Contains(tmpBody, "manifests") {
 
-			if err := util.Json2Object(tmpBody, manifestV2); err != nil {
+			if err := util.JsonX2Object(tmpBody, &manifestV2); err != nil {
 				logrus.Error(err)
 				return
 			}
@@ -400,8 +401,8 @@ func (r *Registry) ManifestV2(imageFullName string) (*ManifestV2, error) {
 	dataWg.Wait()
 
 	manifestV2.Size = 0
-	for _, manifest := range manifestV2.Manifests {
-		manifestV2.Size += manifest.Size
+	for _, m := range manifestV2.Manifests {
+		manifestV2.Size += m.Size
 	}
 
 	return manifestV2, nil
