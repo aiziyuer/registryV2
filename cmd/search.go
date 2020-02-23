@@ -28,7 +28,7 @@ func init() {
 				return errors.New("Page size should be natural number or -1 ! ")
 			}
 
-			c, err := getClient()
+			c, err := getClient(util.GetEnvAnyWithDefault("registry-1.docker.io", "REGISTRY_V2_HOST"))
 			if err != nil {
 				return err
 			}

@@ -3,6 +3,7 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"github.com/aiziyuer/registryV2/impl/util"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -20,7 +21,13 @@ func init() {
 				return errors.New("input image name first ")
 			}
 
-			c, err := getClient()
+			// support for private registry
+			registryHost := "registry-1.docker.io"
+			m := util.RegexNamedMatch(args[0], `(?:(?P<Host>^[^.]+\.[^/]+)/)?(?P<RepoName>[a-z0-9]+(?:[._\-/][a-z0-9]+)*):(?P<TagName>[a-z0-9]+(?:[._\-/][a-z0-9]+)*)`)
+			if len(m) != 0 {
+				registryHost = m["Host"]
+			}
+			c, err := getClient(util.GetEnvAnyWithDefault(registryHost))
 			if err != nil {
 				return err
 			}

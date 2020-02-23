@@ -3,10 +3,11 @@ package cmd
 import (
 	"crypto/tls"
 	"encoding/base64"
+	"errors"
+	"fmt"
 	"github.com/aiziyuer/registryV2/impl/common"
 	"github.com/aiziyuer/registryV2/impl/registry"
 	"github.com/aiziyuer/registryV2/impl/util"
-	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"io/ioutil"
 	"net/http"
@@ -29,6 +30,15 @@ func init() {
 		Short: "Login docker registry",
 		RunE: func(cmd *cobra.Command, args []string) error {
 
+			cmd.SilenceUsage = true
+
+			var registryHost string
+			if len(args) < 1 {
+				registryHost = util.GetEnvAnyWithDefault("registry-1.docker.io", "REGISTRY_HOST")
+			} else {
+				registryHost = args[0]
+			}
+
 			c := registry.NewClient(&http.Client{
 				Transport: &http.Transport{
 					Proxy: http.ProxyFromEnvironment,
@@ -38,22 +48,17 @@ func init() {
 				},
 			}, &registry.Endpoint{
 				Schema: util.GetEnvAnyWithDefault("https", "REGISTRY_SCHEMA"),
-				Host:   util.GetEnvAnyWithDefault("registry-1.docker.io", "REGISTRY_HOST"),
+				Host:   registryHost,
 			}, &common.Auth{
 				UserName: name,
 				PassWord: pass,
 			})
 
 			if err := c.Login(); err != nil {
-				return err
+				return errors.New("Login failed: wrong username or password. ")
 			}
 
-			home, err := homedir.Dir()
-			if err != nil {
-				return err
-			}
-
-			confDir := path.Join(home, ".registryV2")
+			confDir := util.GetEnvAnyWithDefault(registryV2ConfigDir, "REGISTRY_V2_CONFIG")
 			if err := os.MkdirAll(confDir, os.ModePerm); err != nil {
 				return err
 			}
@@ -61,17 +66,6 @@ func init() {
 			// 读取存储密码
 			config := &ConfigStore{
 				Auths: map[string]map[string]string{},
-			}
-			configFile := path.Join(confDir, "config.json")
-			if _, err := os.Stat(configFile); err == nil {
-				json, err := ioutil.ReadFile(configFile)
-				if err != nil {
-					return err
-				}
-
-				if err := util.JsonX2Object(string(json), config); err != nil {
-					return err
-				}
 			}
 
 			// 更新密码
@@ -91,10 +85,11 @@ func init() {
 			}
 
 			jsonBytes = util.PrettyJsonBytes(jsonBytes)
-			if err := ioutil.WriteFile(configFile, jsonBytes, os.ModePerm); err != nil {
+			if err := ioutil.WriteFile(path.Join(confDir, "config.json"), jsonBytes, os.ModePerm); err != nil {
 				return err
 			}
 
+			fmt.Println("Login Succeeded")
 			return nil
 		},
 	}

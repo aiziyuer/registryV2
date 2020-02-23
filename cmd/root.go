@@ -3,7 +3,6 @@ package cmd
 import (
 	"crypto/tls"
 	"encoding/base64"
-	"fmt"
 	"github.com/Jeffail/gabs"
 	"github.com/aiziyuer/registryV2/impl/common"
 	"github.com/aiziyuer/registryV2/impl/registry"
@@ -17,24 +16,17 @@ import (
 	"strings"
 )
 
-var isDebug bool
-
 var rootCmd = &cobra.Command{
-	Use: "registryV2",
-	//TraverseChildren: true,
-	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		if isDebug {
-			logrus.SetLevel(logrus.DebugLevel)
-			logrus.SetReportCaller(true)
-		}
-	},
+	Use:          "registryV2",
+	SilenceUsage: false,
 }
 
+var level string
 var outputFormat string
+var registryV2ConfigDir string
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
 		os.Exit(1)
 	}
 
@@ -42,37 +34,54 @@ func Execute() {
 
 func init() {
 
-	// 默认关闭调试开关
-	isDebug = false
+	// detect the log level
+	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+
+		level, err := logrus.ParseLevel(level)
+		if err != nil {
+			return err
+		}
+
+		logrus.SetLevel(level)
+
+		return nil
+	}
+
+	rootCmd.PersistentFlags().StringVarP(
+		&level,
+		"verbose",
+		"v",
+		logrus.WarnLevel.String(),
+		"Log level (trace, debug, info, warn, error, fatal, panic)",
+	)
 
 	rootCmd.PersistentFlags().StringVarP(
 		&outputFormat,
 		"output", "o", "table",
-		"options output format: table, yaml, json ",
+		"options output format: table, yaml, json",
 	)
-
-	rootCmd.PersistentFlags().BoolVarP(
-		&isDebug,
-		"debug", "d", true,
-		"show verbose log ",
-	)
-
-}
-
-func getClient() (*registry.Registry, error) {
-
-	var client *registry.Registry = nil
 
 	home, err := homedir.Dir()
 	if err != nil {
-		return client, err
+		logrus.Fatal(err)
 	}
 
+	rootCmd.PersistentFlags().StringVarP(
+		&registryV2ConfigDir,
+		"config", "", path.Join(home, ".registryV2"),
+		"location of config files like $REGISTRY_V2_CONFIG ",
+	)
+}
+
+func getClient(host string) (*registry.Registry, error) {
+
+	var client *registry.Registry = nil
+
 	// 尝试读取存储密码
-	jsonParsed, _ := gabs.ParseJSONFile(path.Join(home, ".registryV2/config.json"))
+	jsonParsed, _ := gabs.ParseJSONFile(path.Join(registryV2ConfigDir, ".registryV2/config.json"))
 	encodedAuth := jsonParsed.
 		Search("auths").
-		Search(util.GetEnvAnyWithDefault("registry-1.docker.io", "REGISTRY_HOST")).
+		Search(util.GetEnvAnyWithDefault("registry-1.docker.io", "REGISTRY_V2_HOST")).
 		Search("auth").
 		Data()
 
@@ -89,11 +98,11 @@ func getClient() (*registry.Registry, error) {
 					},
 				},
 			}, &registry.Endpoint{
-				Schema: util.GetEnvAnyWithDefault("https", "REGISTRY_SCHEMA"),
-				Host:   util.GetEnvAnyWithDefault("registry-1.docker.io", "REGISTRY_HOST"),
+				Schema: util.GetEnvAnyWithDefault("https", "REGISTRY_V2_SCHEMA"),
+				Host:   util.GetEnvAnyWithDefault(host, "REGISTRY_V2_HOST"),
 			}, &common.Auth{
-				UserName: strings.Split(nameAndPass, ":")[0],
-				PassWord: strings.Split(nameAndPass, ":")[1],
+				UserName: strings.SplitN(nameAndPass, ":", 2)[0],
+				PassWord: strings.SplitN(nameAndPass, ":", 2)[1],
 			})
 		}
 
@@ -109,8 +118,8 @@ func getClient() (*registry.Registry, error) {
 				},
 			},
 		}, &registry.Endpoint{
-			Schema: util.GetEnvAnyWithDefault("https", "REGISTRY_SCHEMA"),
-			Host:   util.GetEnvAnyWithDefault("registry-1.docker.io", "REGISTRY_HOST"),
+			Schema: util.GetEnvAnyWithDefault("https", "REGISTRY_V2_SCHEMA"),
+			Host:   util.GetEnvAnyWithDefault(host, "REGISTRY_V2_HOST"),
 		}, nil)
 
 	}
