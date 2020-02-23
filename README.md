@@ -3,6 +3,8 @@ RegistryV2
 
 ![Go](https://github.com/aiziyuer/registryV2/workflows/Go/badge.svg)
 
+Another to tool to mananger docker image.
+
 ## ⚡️ Quickstart
 
 ```
