@@ -380,7 +380,7 @@ func (r *Registry) ManifestV2(imageFullName string) (*ManifestsV2, error) {
 
 		if strings.Contains(tmpBody, "manifests") {
 
-			if err := util.JsonX2Object(tmpBody, manifestV2); err != nil {
+			if err := util.Json2Object(tmpBody, &manifestV2); err != nil {
 				logrus.Error(err)
 				return
 			}
