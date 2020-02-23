@@ -3,8 +3,7 @@ registryV2
 
 A tool to mananger docker image via v2 api.
 
-![Go](https://github.com/aiziyuer/registryV2/workflows/Go/badge.svg)
-
+![Build Test](https://github.com/aiziyuer/registryV2/workflows/Build%20Test/badge.svg)
 
 ## ⚡️ Quickstart
 
