@@ -32,7 +32,12 @@ Use "registryV2 [command] --help" for more information about a command.
 go get -u -v github.com/aiziyuer/registryV2
 
 # install as system
-CGO_ENABLED=0 GOBIN=/usr/local/bin/ go get -u -v github.com/aiziyuer/registryV2
+CGO_ENABLED=0
+GOBIN=/usr/bin/
+go get -u -v github.com/aiziyuer/registryV2
+
+# uninstall
+rm -rf /usr/bin/registryV2
 ```
 
 ## 🤖 Benchmarks
