@@ -49,6 +49,6 @@ func init() {
 		},
 	}
 
-	imageCmd.AddCommand(imageManifestCmd)
+	rootCmd.AddCommand(imageManifestCmd)
 
 }

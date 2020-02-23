@@ -92,6 +92,6 @@ func init() {
 		"Show total size at the footer",
 	)
 
-	imageCmd.AddCommand(imageSearchCmd)
+	rootCmd.AddCommand(imageSearchCmd)
 
 }
