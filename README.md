@@ -1,12 +1,9 @@
-registryV2 
+registryV2 ![Build Test](https://github.com/aiziyuer/registryV2/workflows/Build%20Test/badge.svg)
 ---
-
-A tool to mananger docker image via v2 api.
 
 `registryV2` is different with docker, all func is via api, no image donwload any more,
 it may improve the speed to operate orci image, just have fun.
 
-![Build Test](https://github.com/aiziyuer/registryV2/workflows/Build%20Test/badge.svg)
 
 ## ⚙️ Installation
 
