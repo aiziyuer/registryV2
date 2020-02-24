@@ -8,18 +8,14 @@ it may improve the speed to operate orci image, just have fun.
 ## ⚙️ Installation
 
 ``` bash
-go get -u -v github.com/aiziyuer/registryV2
-
-# install as system
-export CGO_ENABLED=0
-export GOBIN=/usr/bin
+CGO_ENABLED=0 \
+GOBIN=/usr/bin \
 go get -u -v github.com/aiziyuer/registryV2
 ```
 
 ## ⚡️ Quickstart
 
 ```
-
 # view image manifest( more details: -o json )
 ➜  ~ registryV2 manifest centos:7
 # .
@@ -46,7 +42,6 @@ go get -u -v github.com/aiziyuer/registryV2
 #    └── [P linux/ppc64le] sha256:4b8a19661b7d770bbab54747541812b581bfd4944ef64b58653d4fc77f3e1ebc 79932061
 #        ├── [C] sha256:ec71c93f9d8cfde5403701971e08e1f7c197ce6492977915b11ec4b65f63699a 2185
 #        └── [L   1] sha256:23bd9eb8fdc010dbd36575046a8c42317f78a9926da949829722cfc815d46cf9 79929876
-
 ```
 
 ## 🤖 Benchmarks
