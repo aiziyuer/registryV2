@@ -16,7 +16,28 @@ go get -u -v github.com/aiziyuer/registryV2
 ## ⚡️ Quickstart
 
 ```
-# view image manifest( more details: -o json )
+➜  ~ registryV2
+Usage:
+  registryV2 [command]
+
+Available Commands:
+  help        Help about any command
+  login       Login docker registry
+  manifest    manifest for image
+  search      SearchProject by name
+
+Flags:
+      --config string    location of config files like $REGISTRY_V2_CONFIG  (default "/root/.registryV2")
+  -h, --help             help for registryV2
+  -o, --output string    options output format: table, yaml, json (default "table")
+  -v, --verbose string   Log level (trace, debug, info, warn, error, fatal, panic)  (default "warning")
+
+Use "registryV2 [command] --help" for more information about a command.
+```
+
+view image manifest( more details: -o json )
+
+```
 ➜  ~ registryV2 manifest centos:7
 # .
 # └── [D] {manifest sha256sum} {manifest size}
