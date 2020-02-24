@@ -12,7 +12,7 @@ go get -u -v github.com/aiziyuer/registryV2
 
 # install as system
 export CGO_ENABLED=0
-export GOBIN=/usr/bin/
+export GOBIN=/usr/bin
 go get -u -v github.com/aiziyuer/registryV2
 ```
 
